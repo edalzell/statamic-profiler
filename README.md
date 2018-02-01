@@ -48,3 +48,8 @@ Use like a standard Statamic Form:
             <button class="btn btn-primary">Update</button>
         {{ /user_profile:edit_form }}
 ```
+
+## Support on Beerpay
+Hey dude! Help me out for a couple of :beers:!
+
+[![Beerpay](https://beerpay.io/edalzell/user-profile/badge.svg?style=beer-square)](https://beerpay.io/edalzell/user-profile)  [![Beerpay](https://beerpay.io/edalzell/user-profile/make-wish.svg?style=flat-square)](https://beerpay.io/edalzell/user-profile?focus=wish)
