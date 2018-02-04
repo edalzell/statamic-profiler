@@ -21,9 +21,7 @@ class UserProfileController extends Controller {
 
     public function __construct() {
         if ($this->user = User::getCurrent()) {
-
             $this->fieldset = $this->user->fieldset();
-
         }
     }
 
@@ -33,37 +31,35 @@ class UserProfileController extends Controller {
      * @return \Illuminate\Routing\Redirector|\Illuminate\Http\RedirectResponse
      */
     public function postEdit() {
-        if ($user = User::getCurrent()) {
-
-
+        if ($this->user) {
             $this->fields = array_intersect_key(Request::all(),
                                                 array_flip(array_keys(array_merge($this->fieldset->fields(),
                                                                                   $this->fieldset->taxonomies()))));
-
             $validator = $this->runValidation();
 
             if ($validator->fails()) {
-                return back()->withInput()->withErrors($validator);
+                return back()->withInput()->withErrors($validator, 'user_profile');
             }
 
             $this->uploadFiles();
 
             // there will always be a username here because otherwise the validation would have failed.
-            $user->username(Request::get('username'));
+            $this->user->username(Request::get('username'));
 
             if (Request::has('email')) {
-                $user->email(Request::get('email'));
+                $this->user->email(Request::get('email'));
             }
 
             // are we resetting a password too?
-            //$user->password($password);
+            if (Request::has('password')) {
+                $this->user->password(Request::get('password'));
+                $this->user->setPasswordResetToken(null);
+            }
 
-            $user->setPasswordResetToken(null);
 
+            $this->user->data(array_merge($this->user->data(), $this->fields));
 
-            $user->data(array_merge($user->data(), $this->fields));
-
-            $user->save();
+            $this->user->save();
 
             return Request::has('redirect') ? redirect(Request::get('redirect')) : back();
 
@@ -107,7 +103,6 @@ class UserProfileController extends Controller {
             if (!$this->multipleFilesAllowed($config)) {
                 $assets = $assets[0];
             }
-
             // end todo
 
             return $assets;
@@ -124,19 +119,21 @@ class UserProfileController extends Controller {
      */
     private function runValidation() {
 
-        $additional_validations = ['username' => 'required'];
-        // if we're resetting the password, add the validation
+        $fields = ['fields' => $this->fields];
+        $rules = (new ValidationBuilder($fields, $this->fieldset))->build()->rules();
+
+        // ensure there's a username
+        $rules['username'] = 'required';
+        $fields['username'] = Request::get('username');
+
+        // if we're resetting the password, add the validation rules and the fields
         if (Request::has('password')) {
-            $additional_validations['password'] = 'required|confirmed';
+            $rules['password'] = 'required|confirmed';
+
+            $fields += Request::only(['password', 'password_confirmation']);
         }
 
-        $fields = array_merge($this->fields, $additional_validations);
-
-        $builder = new ValidationBuilder(['fields' => $fields], $this->fieldset);
-
-        $builder->build();
-
-        return app('validator')->make(['fields' => $fields], $builder->rules());
+        return app('validator')->make($fields, $rules);
     }
 
     /**
