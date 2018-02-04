@@ -11,9 +11,21 @@ use Statamic\CP\Publish\ValidationBuilder;
 
 class UserProfileController extends Controller {
 
+    /** @var Fieldset $fieldset */
     private $fieldset;
 
     private $fields;
+
+    /** @var \Statamic\Data\Users\User $user */
+    private $user;
+
+    public function __construct() {
+        if ($this->user = User::getCurrent()) {
+
+            $this->fieldset = $this->user->fieldset();
+
+        }
+    }
 
     /**
      * Update a user with new data.
@@ -23,12 +35,10 @@ class UserProfileController extends Controller {
     public function postEdit() {
         if ($user = User::getCurrent()) {
 
-            /** @var Fieldset $fieldset */
-            $this->fieldset = $user->fieldset();
 
             $this->fields = array_intersect_key(Request::all(),
-                                          array_flip(array_keys(array_merge($this->fieldset->fields(),
-                                                                            $this->fieldset->taxonomies()))));
+                                                array_flip(array_keys(array_merge($this->fieldset->fields(),
+                                                                                  $this->fieldset->taxonomies()))));
 
             $validator = $this->runValidation();
 
@@ -44,6 +54,12 @@ class UserProfileController extends Controller {
             if (Request::has('email')) {
                 $user->email(Request::get('email'));
             }
+
+            // are we resetting a password too?
+            //$user->password($password);
+
+            $user->setPasswordResetToken(null);
+
 
             $user->data(array_merge($user->data(), $this->fields));
 
@@ -82,9 +98,19 @@ class UserProfileController extends Controller {
 
             // Upload the files
             $class = 'Statamic\Forms\Uploaders\\'.ucfirst($type).'Uploader';
-            $uploader = new $class(array_get($arr, 'config'), array_get($arr, 'files'));
+            $config = array_get($arr, 'config');
+            $uploader = new $class($config, array_get($arr, 'files'));
 
-            return $uploader->upload();
+            $assets = $uploader->upload();
+
+            // @todo remove when https://github.com/statamic/v2-hub/issues/1767 is resolved
+            if (!$this->multipleFilesAllowed($config)) {
+                $assets = $assets[0];
+            }
+
+            // end todo
+
+            return $assets;
         })->all();
 
         $this->fields = array_merge($this->fields, $asset_ids);
@@ -97,7 +123,14 @@ class UserProfileController extends Controller {
      * @return mixed
      */
     private function runValidation() {
-        $fields = array_merge($this->fields, ['username' => 'required']);
+
+        $additional_validations = ['username' => 'required'];
+        // if we're resetting the password, add the validation
+        if (Request::has('password')) {
+            $additional_validations['password'] = 'required|confirmed';
+        }
+
+        $fields = array_merge($this->fields, $additional_validations);
 
         $builder = new ValidationBuilder(['fields' => $fields], $this->fieldset);
 
@@ -105,4 +138,17 @@ class UserProfileController extends Controller {
 
         return app('validator')->make(['fields' => $fields], $builder->rules());
     }
+
+    /**
+     * Are multiple files allowed to be uploaded?
+     *
+     * @param $config array
+     *
+     * @return bool
+     */
+    private function multipleFilesAllowed($config)
+    {
+        return array_get($config, 'type') === 'assets' &&  array_get($config, 'max_files', 0) != 1;
+    }
+
 }
