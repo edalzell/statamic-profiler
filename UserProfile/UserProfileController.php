@@ -2,15 +2,15 @@
 
 namespace Statamic\Addons\UserProfile;
 
-use Statamic\API\User;
 use Statamic\API\Helper;
 use Statamic\API\Request;
+use Statamic\API\User;
 use Statamic\CP\Fieldset;
-use Statamic\Extend\Controller;
 use Statamic\CP\Publish\ValidationBuilder;
+use Statamic\Extend\Controller;
 
-class UserProfileController extends Controller {
-
+class UserProfileController extends Controller
+{
     /** @var Fieldset $fieldset */
     private $fieldset;
 
@@ -19,7 +19,8 @@ class UserProfileController extends Controller {
     /** @var \Statamic\Data\Users\User $user */
     private $user;
 
-    public function __construct() {
+    public function __construct()
+    {
         if ($this->user = User::getCurrent()) {
             $this->fieldset = $this->user->fieldset();
         }
@@ -30,11 +31,20 @@ class UserProfileController extends Controller {
      *
      * @return \Illuminate\Routing\Redirector|\Illuminate\Http\RedirectResponse
      */
-    public function postEdit() {
+    public function postEdit()
+    {
         if ($this->user) {
-            $this->fields = array_intersect_key(Request::all(),
-                                                array_flip(array_keys(array_merge($this->fieldset->fields(),
-                                                                                  $this->fieldset->taxonomies()))));
+            $this->fields = array_intersect_key(
+                Request::all(),
+                array_flip(
+                    array_keys(
+                        array_merge(
+                            $this->fieldset->fields(),
+                            Helper::ensureArray($this->fieldset->taxonomies())
+                        )
+                    )
+                )
+            );
             $validator = $this->runValidation();
 
             if ($validator->fails()) {
@@ -56,13 +66,11 @@ class UserProfileController extends Controller {
                 $this->user->setPasswordResetToken(null);
             }
 
-
             $this->user->data(array_merge($this->user->data(), $this->fields));
 
             $this->user->save();
 
             return Request::has('redirect') ? redirect(Request::get('redirect')) : back();
-
         } else {
             return back()->withInput()->withErrors('Not logged in', 'user_profile');
         }
@@ -75,15 +83,12 @@ class UserProfileController extends Controller {
         $asset_ids = collect($this->fieldset->fields())->filter(function ($field) {
             // Only deal with uploadable fields
             return in_array(array_get($field, 'type'), ['file', 'files', 'asset', 'assets']);
-
         })->map(function ($config, $field) {
             // Map into a nicer data schema to work with
             return compact('field', 'config');
-
         })->reject(function ($arr) use ($request) {
             // Remove if no file was uploaded
             return !$request->hasFile($arr['field']);
-
         })->map(function ($arr, $field) use ($request) {
             // Add the uploaded files to our data array
             $files = collect(array_filter(Helper::ensureArray($request->file($field))));
@@ -93,7 +98,7 @@ class UserProfileController extends Controller {
             $type = rtrim(array_get($arr, 'config.type'), 's');
 
             // Upload the files
-            $class = 'Statamic\Forms\Uploaders\\'.ucfirst($type).'Uploader';
+            $class = 'Statamic\Forms\Uploaders\\' . ucfirst($type) . 'Uploader';
             $config = array_get($arr, 'config');
             $uploader = new $class($config, array_get($arr, 'files'));
 
@@ -111,14 +116,13 @@ class UserProfileController extends Controller {
         $this->fields = array_merge($this->fields, $asset_ids);
     }
 
-
     /**
      * Get the Validator instance
      *
      * @return mixed
      */
-    private function runValidation() {
-
+    private function runValidation()
+    {
         $fields = ['fields' => $this->fields];
         $rules = (new ValidationBuilder($fields, $this->fieldset))->build()->rules();
 
@@ -145,7 +149,6 @@ class UserProfileController extends Controller {
      */
     private function multipleFilesAllowed($config)
     {
-        return array_get($config, 'type') === 'assets' &&  array_get($config, 'max_files', 0) != 1;
+        return array_get($config, 'type') === 'assets' && array_get($config, 'max_files', 0) != 1;
     }
-
 }
