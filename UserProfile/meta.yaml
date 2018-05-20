@@ -1,5 +1,5 @@
 name: UserProfile
-version: "1.0"
+version: "1.0.2"
 description: Allows user to update their profile
 url: https://github.com/edalzell/statamic-user-profile
 developer: Erin Dalzell
