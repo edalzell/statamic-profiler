@@ -2,22 +2,23 @@
 
 namespace Statamic\Addons\UserProfile;
 
-use Statamic\API\User;
 use Statamic\API\Request;
+use Statamic\API\User;
 use Statamic\Extend\Tags;
 
-class UserProfileTags extends Tags {
+class UserProfileTags extends Tags
+{
     /**
      * The {{ user_profile:edit_form }} tag
      *
      * @return string|array
      */
-    public function editForm() {
+    public function editForm()
+    {
         $data = [];
         if ($user = User::getCurrent()) {
             $data = $user->data();
             $data['username'] = $user->username();
-            $data['email'] = $user->email();
 
             if ($this->success()) {
                 $data['success'] = true;
@@ -46,7 +47,8 @@ class UserProfileTags extends Tags {
      *
      * @return string
      */
-    private function getRedirectUrl() {
+    private function getRedirectUrl()
+    {
         $return = $this->get('redirect');
 
         if ($this->getBool('allow_request_redirect')) {
@@ -61,7 +63,8 @@ class UserProfileTags extends Tags {
      *
      * @return bool
      */
-    public function success() {
+    public function success()
+    {
         return $this->flash->exists('success');
     }
 
@@ -70,7 +73,8 @@ class UserProfileTags extends Tags {
      *
      * @return bool|string
      */
-    public function errors() {
+    public function errors()
+    {
         if (!$this->hasErrors()) {
             return false;
         }
@@ -81,9 +85,9 @@ class UserProfileTags extends Tags {
             $errors[]['value'] = $error;
         }
 
-        return ($this->content === '')    // If this is a single tag...
-            ? !empty($errors)             // just output a boolean.
-            : $this->parseLoop($errors);  // Otherwise, parse the content loop.
+        return ($this->content === '') // If this is a single tag...
+         ? !empty($errors) // just output a boolean.
+         : $this->parseLoop($errors); // Otherwise, parse the content loop.
     }
 
     /**
@@ -91,10 +95,11 @@ class UserProfileTags extends Tags {
      *
      * @return bool
      */
-    private function hasErrors() {
+    private function hasErrors()
+    {
         return (session()->has('errors'))
-            ? session('errors')->hasBag('user_profile')
-            : false;
+        ? session('errors')->hasBag('user_profile')
+        : false;
     }
 
     /**
@@ -102,7 +107,8 @@ class UserProfileTags extends Tags {
      *
      * @return object
      */
-    private function getErrorBag() {
+    private function getErrorBag()
+    {
         if ($this->hasErrors()) {
             return session('errors')->getBag('user_profile');
         }
