@@ -11,12 +11,16 @@ use Statamic\Extend\Controller;
 
 class UserProfileController extends Controller
 {
-    /** @var Fieldset $fieldset */
+    /**
+     * @var Fieldset $fieldset User fieldset
+     */
     private $fieldset;
 
     private $fields;
 
-    /** @var \Statamic\Data\Users\User $user */
+    /**
+     * @var \Statamic\Data\Users\User $user logged in user
+     */
     private $user;
 
     public function __construct()
@@ -54,11 +58,7 @@ class UserProfileController extends Controller
             $this->uploadFiles();
 
             // there will always be a username here because otherwise the validation would have failed.
-            $this->user->username(Request::get('username'));
-
-            if (Request::has('email')) {
-                $this->user->email(Request::get('email'));
-            }
+            $this->user->username($this->getUsername());
 
             // are we resetting a password too?
             if (Request::has('password')) {
@@ -66,8 +66,13 @@ class UserProfileController extends Controller
                 $this->user->setPasswordResetToken(null);
             }
 
-            $this->user->data(array_merge($this->user->data(), $this->fields));
+            $data = array_merge($this->user->data(), $this->fields);
 
+            if (isset($data['username'])) {
+                unset($data['username']);
+            }
+
+            $this->user->data($data);
             $this->user->save();
 
             return Request::has('redirect') ? redirect(Request::get('redirect')) : back();
@@ -128,7 +133,7 @@ class UserProfileController extends Controller
 
         // ensure there's a username
         $rules['username'] = 'required';
-        $fields['username'] = Request::get('username');
+        $fields['username'] = $this->getUsername();
 
         // if we're resetting the password, add the validation rules and the fields
         if (Request::has('password')) {
@@ -138,6 +143,16 @@ class UserProfileController extends Controller
         }
 
         return app('validator')->make($fields, $rules);
+    }
+
+    /**
+     * Get the username
+     *
+     * @return string
+     */
+    private function getUsername()
+    {
+        return Request::has('username') ? Request::get('username') : $this->user->username();
     }
 
     /**
