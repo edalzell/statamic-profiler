@@ -1,6 +1,8 @@
-name: UserProfile
-version: "1.0.2"
+name: Profiler
+version: "2.0"
 description: Allows user to update their profile
-url: https://github.com/edalzell/statamic-user-profile
+url: https://github.com/edalzell/statamic-profiler
 developer: Erin Dalzell
 developer_url: silentzconsulting.com
+commercial: true
+  

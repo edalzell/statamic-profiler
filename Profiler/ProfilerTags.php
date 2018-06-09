@@ -1,15 +1,15 @@
 <?php
 
-namespace Statamic\Addons\UserProfile;
+namespace Statamic\Addons\Profiler;
 
 use Statamic\API\Request;
+use Statamic\API\URL;
 use Statamic\API\User;
-use Statamic\Extend\Tags;
 
-class UserProfileTags extends Tags
+class ProfilerTags extends Tags
 {
     /**
-     * The {{ user_profile:edit_form }} tag
+     * The {{ profiler:edit_form }} tag
      *
      * @return string|array
      */
@@ -49,13 +49,9 @@ class UserProfileTags extends Tags
      */
     private function getRedirectUrl()
     {
-        $return = $this->get('redirect');
-
-        if ($this->getBool('allow_request_redirect')) {
-            $return = Request::input('redirect', $return);
-        }
-
-        return $return;
+        return $this->getBool('allow_request_redirect', false)
+        ? Request::input('redirect')
+        : $this->get('redirect');
     }
 
     /**
@@ -81,7 +77,7 @@ class UserProfileTags extends Tags
 
         $errors = [];
 
-        foreach (session('errors')->getBag('user_profile')->all() as $error) {
+        foreach ($this->getErrorBag()->all() as $error) {
             $errors[]['value'] = $error;
         }
 
@@ -98,7 +94,7 @@ class UserProfileTags extends Tags
     private function hasErrors()
     {
         return (session()->has('errors'))
-        ? session('errors')->hasBag('user_profile')
+        ? session('errors')->hasBag('profiler')
         : false;
     }
 
@@ -110,7 +106,7 @@ class UserProfileTags extends Tags
     private function getErrorBag()
     {
         if ($this->hasErrors()) {
-            return session('errors')->getBag('user_profile');
+            return session('errors')->getBag('profiler');
         }
     }
 }

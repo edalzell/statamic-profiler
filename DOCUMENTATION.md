@@ -1,6 +1,6 @@
 ## Installation
 
-Copy UserProfile folder to `site/addons` folder
+Copy Profiler folder to `site/addons` folder
 
 ## Usage
 
@@ -10,11 +10,15 @@ If your login is set to `email`, then your email field should actually be a `use
 
 You can also have users change their password if you have two password fields, `password` & `password_confirmation`.
 
-If you have `<input type="file"...`, users can upload files as well.
+### Uploading 
+
+You can have your users upload files during registration, and when they edit their profile. Add `files="true"` to the appropriate tag (either `user:register` or `profiler:edit`) to enable.
+
+Add the appropriate `assets` fields to the `user` fieldset.
 
 With `login_type: username`:
 ```
-        {{ user_profile:edit_form redirect="/account" files="true" }}
+        {{ profiler:edit_form redirect="/account" files="true" }}
             {{ if errors }}
                 <div class="alert alert-danger">
                     {{ errors }}
@@ -64,7 +68,7 @@ With `login_type: username`:
             </div>
     
             <button class="btn btn-primary">Update</button>
-        {{ /user_profile:edit_form }}
+        {{ /profiler:edit_form }}
 ```
 
 With `login_type: email`:
