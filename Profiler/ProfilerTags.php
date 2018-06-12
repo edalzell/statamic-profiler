@@ -5,6 +5,7 @@ namespace Statamic\Addons\Profiler;
 use Statamic\API\Request;
 use Statamic\API\URL;
 use Statamic\API\User;
+use Statamic\Extend\Tags;
 
 class ProfilerTags extends Tags
 {
