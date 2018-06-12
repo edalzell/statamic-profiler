@@ -1,8 +1,7 @@
 name: Profiler
-version: "2.0"
+version: "2.0.1"
 description: Allows user to update their profile
-url: https://github.com/edalzell/statamic-profiler
+url: https://statamic.com/marketplace/addons/profiler
 developer: Erin Dalzell
 developer_url: silentzconsulting.com
 commercial: true
-  
