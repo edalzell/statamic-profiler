@@ -7,6 +7,7 @@ use Statamic\API\Request;
 use Statamic\API\User;
 use Statamic\CP\Publish\ValidationBuilder;
 use Statamic\Extend\Controller;
+use Symfony\Component\HttpFoundation\File\UploadedFile;
 
 class ProfilerController extends Controller
 {
@@ -57,22 +58,52 @@ class ProfilerController extends Controller
      *
      * @return mixed
      */
-    private function runValidation($fields)
+    private function runValidation($fields = [])
     {
-        $fields = ['fields' => $fields];
-        $rules = (new ValidationBuilder($fields, FieldsetAPI::get('user')))->build()->rules();
+        $fieldset = FieldsetAPI::get('user');
+        // get all the fields that are files
+        $fileFields = collect($fields)->filter(function ($value) {
+            return ($value instanceof UploadedFile);
+        });
+
+        /* if the fieldset has assets AND there are no assets in the fields, remove the validation
+           on the assumption that if there's no file in the request, they don't want to change it
+
+           @todo how to handle file deletions???????
+        */
+        if ($this->fieldsetHasAssets($fieldset) &&
+            $fileFields->count() == 0) {
+            $rules = collect((new ValidationBuilder($fields, $fieldset))->build()->rules())
+                // set the file ones to null
+                ->map(function ($item, $key) use ($fields) {
+                    list($ignored, $actualKey) = explode('.', $key);
+                    return array_has($fields, $actualKey) ? $item : null;
+                })
+                // filter out the null ones
+                ->filter(function ($value) {
+                    return $value;
+                })
+                ->all();
+        }
 
         // ensure there's a username
-        $rules['username'] = 'required';
+        $rules['fields.username'] = 'required';
         $fields['username'] = Request::has('username') ? Request::get('username') : User::getCurrent()->username();
 
         // if we're resetting the password, add the validation rules and the fields
         if (Request::has('password')) {
-            $rules['password'] = 'required|confirmed';
+            $rules['fields.password'] = 'required|confirmed';
 
             $fields += Request::only(['password', 'password_confirmation']);
         }
 
-        return app('validator')->make($fields, $rules);
+        return app('validator')->make(['fields' => $fields], $rules);
+    }
+
+    private function fieldsetHasAssets($fieldset)
+    {
+        return collect($fieldset->fields())->contains(function ($key, $field) {
+            return $field['type'] != 'assets';
+        });
     }
 }
