@@ -75,13 +75,9 @@ class ProfilerController extends Controller
             $fileFields->count() == 0) {
             $rules = collect((new ValidationBuilder($fields, $fieldset))->build()->rules())
                 // set the file ones to null
-                ->map(function ($item, $key) use ($fields) {
+                ->filterWithKey(function ($item, $key) use ($fields) {
                     list($ignored, $actualKey) = explode('.', $key);
-                    return array_has($fields, $actualKey) ? $item : null;
-                })
-                // filter out the null ones
-                ->filter(function ($value) {
-                    return $value;
+                    return array_has($fields, $actualKey);
                 })
                 ->all();
         }
@@ -103,7 +99,7 @@ class ProfilerController extends Controller
     private function fieldsetHasAssets($fieldset)
     {
         return collect($fieldset->fields())->contains(function ($key, $field) {
-            return $field['type'] != 'assets';
+            return $field['type'] == 'assets';
         });
     }
 }
