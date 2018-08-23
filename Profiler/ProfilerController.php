@@ -2,11 +2,11 @@
 
 namespace Statamic\Addons\Profiler;
 
-use Statamic\API\Fieldset as FieldsetAPI;
-use Statamic\API\Request;
 use Statamic\API\User;
-use Statamic\CP\Publish\ValidationBuilder;
+use Statamic\API\Request;
 use Statamic\Extend\Controller;
+use Statamic\API\Fieldset as FieldsetAPI;
+use Statamic\CP\Publish\ValidationBuilder;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
 
 class ProfilerController extends Controller
@@ -14,14 +14,22 @@ class ProfilerController extends Controller
     use Core;
 
     /**
+     * $user User;
+     */
+    private $user;
+
+    public function __construct() {
+        $this->user = User::getCurrent();
+    }
+    /**
      * Update a user with new data.
      *
      * @return \Illuminate\Routing\Redirector|\Illuminate\Http\RedirectResponse
      */
     public function postEdit()
     {
-        if ($user = User::getCurrent()) {
-            $fields = $this->getFields($user->fieldset());
+        if ($this->user) {
+            $fields = $this->getFields($this->user->fieldset());
             $validator = $this->runValidation($fields);
 
             if ($validator->fails()) {
@@ -30,20 +38,20 @@ class ProfilerController extends Controller
 
             // are we resetting a password too?
             if (Request::has('password')) {
-                $user->password(Request::get('password'));
-                $user->setPasswordResetToken(null);
+                $this->user->password(Request::get('password'));
+                $this->user->setPasswordResetToken(null);
             }
-            // if there's a username, set it (in case it's changing)
+            // if there's a username set it
             if (Request::has('username')) {
-                $user->username(Request::get('username'));
+                $this->user->username(Request::get('username'));
             }
 
-            $user
+            $this->user
                 ->data(
                     array_merge(
-                        $user->data(),
+                        $this->user->data(),
                         array_except($fields, 'username'),
-                        $this->uploadFiles($user->fieldset())
+                        $this->uploadFiles($this->user->fieldset())
                     )
                 )->save();
 
@@ -84,7 +92,13 @@ class ProfilerController extends Controller
 
         // ensure there's a username
         $rules['fields.username'] = 'required';
-        $fields['username'] = Request::has('username') ? Request::get('username') : User::getCurrent()->username();
+
+        // if there's a username and it's different than the current one, ensure its unique
+        if (Request::has('username') && Request::get('username') != $this->user->username()) {
+            $rules['fields.username'] .= '|not_in:' . User::pluck('username')->implode(',');
+        }
+        
+        $fields['username'] = Request::get('username') ?? $this->user->username();
 
         // if we're resetting the password, add the validation rules and the fields
         if (Request::has('password')) {
