@@ -1,4 +1,4 @@
-**NOTE**: Requires Statamic 2.9.8
+**NOTE**: Requires ![Statamic](https://img.shields.io/badge/statamic-2.9.8-blue.svg?style=flat-square)
 
 Like Workshop, but for user profiles.
 
