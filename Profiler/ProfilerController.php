@@ -10,6 +10,7 @@ use Statamic\Extend\Controller;
 use Statamic\API\User as UserAPI;
 use Statamic\API\Fieldset as FieldsetAPI;
 use Statamic\CP\Publish\ValidationBuilder;
+use Statamic\Forms\Uploaders\AssetUploader;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
 
 class ProfilerController extends Controller
@@ -76,17 +77,24 @@ class ProfilerController extends Controller
     {
         $fieldset = FieldsetAPI::get('user');
         // get all the fields that are files
+        // the validator needs a file name not an UploadedFile
+        // this feels super duper hacky but I'm tired and it works
         $fileFields = collect($fields)->filter(function ($value) {
             return ($value instanceof UploadedFile);
+        })->each(function ($file, $key) use (&$fields) {
+            $fields[$key] = $file->getClientOriginalName();
         });
 
-        /* if the fieldset has assets AND there are no assets in the fields, remove the validation
-        on the assumption that if there's no file in the request, they don't want to change it
+        /*
+            if the fieldset has assets AND there are no assets in the fields, remove the validation
+            on the assumption that if there's no file in the request, they don't want to change it
 
-        @todo how to handle file deletions???????
+            @todo how to handle file deletions???????
          */
+        $rules = (new ValidationBuilder($fields, $fieldset))->build()->rules();
+
         if ($this->fieldsetHasAssets($fieldset) && $fileFields->count() == 0) {
-            $rules = collect((new ValidationBuilder($fields, $fieldset))->build()->rules())
+            $rules = collect($rules)
                 // set the file ones to null
                 ->filterWithKey(function ($item, $key) use ($fields) {
                     list($ignored, $actualKey) = explode('.', $key);
