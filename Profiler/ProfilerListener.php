@@ -8,8 +8,6 @@ use Statamic\Extend\Listener;
 
 class ProfilerListener extends Listener
 {
-    use Core;
-
     /**
      * The events to be listened for, and the methods to call.
      *
