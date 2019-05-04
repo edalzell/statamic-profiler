@@ -1,6 +1,6 @@
 name: Profiler
 version: "2.0.4"
-description: Allows user to update their profile
+description: Allows user to update or delete their profile
 url: https://statamic.com/marketplace/addons/profiler
 developer: Erin Dalzell
 developer_url: silentzconsulting.com

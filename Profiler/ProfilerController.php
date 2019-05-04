@@ -2,63 +2,69 @@
 
 namespace Statamic\Addons\Profiler;
 
-use Statamic\API\User;
+use Statamic\API\Helper;
 use Statamic\API\Request;
+use Statamic\API\Fieldset;
+use Statamic\Data\Users\User;
 use Statamic\Extend\Controller;
+use Statamic\API\User as UserAPI;
 use Statamic\API\Fieldset as FieldsetAPI;
 use Statamic\CP\Publish\ValidationBuilder;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
 
 class ProfilerController extends Controller
 {
-    use Core;
-
-    /**
-     * $user User;
-     */
+    /** @var User */
     private $user;
 
-    public function __construct() {
-        $this->user = User::getCurrent();
-    }
     /**
      * Update a user with new data.
      *
      * @return \Illuminate\Routing\Redirector|\Illuminate\Http\RedirectResponse
      */
-    public function postEdit()
+    public function postUser($id)
     {
-        if ($this->user) {
-            $fields = $this->getFields($this->user->fieldset());
-            $validator = $this->runValidation($fields);
+        $this->user = UserAPI::find($id);
 
-            if ($validator->fails()) {
-                return back()->withInput()->withErrors($validator, 'profiler');
-            }
+        $fields = $this->getFields(Fieldset::get('user'));
+        $validator = $this->runValidation($fields);
 
-            // are we resetting a password too?
-            if (Request::has('password')) {
-                $this->user->password(Request::get('password'));
-                $this->user->setPasswordResetToken(null);
-            }
-            // if there's a username set it
-            if (Request::has('username')) {
-                $this->user->username(Request::get('username'));
-            }
-
-            $this->user
-                ->data(
-                    array_merge(
-                        $this->user->data(),
-                        array_except($fields, 'username'),
-                        $this->uploadFiles($this->user->fieldset())
-                    )
-                )->save();
-
-            return Request::has('redirect') ? redirect(Request::get('redirect')) : back();
-        } else {
-            return back()->withInput()->withErrors('Not logged in', 'profiler');
+        if ($validator->fails()) {
+            return back()->withInput()->withErrors($validator, 'profiler');
         }
+
+        // are we resetting a password too?
+        if (Request::has('password')) {
+            $this->user->password(Request::get('password'));
+            $this->user->setPasswordResetToken(null);
+        }
+        // if there's a username set it
+        if (Request::has('username')) {
+            $this->user->username(Request::get('username'));
+        }
+
+        $this->user
+            ->data(
+                array_merge(
+                    $this->user->data(),
+                    array_except($fields, 'username'),
+                    $this->uploadFiles($this->user->fieldset())
+                )
+            )->save();
+
+        return Request::has('redirect') ? redirect(Request::get('redirect')) : back();
+    }
+
+    /**
+     * Delete a user with new data.
+     *
+     * @return \Illuminate\Routing\Redirector|\Illuminate\Http\RedirectResponse
+     */
+    public function deleteUser($id)
+    {
+        UserAPI::find($id)->delete();
+
+        return Request::has('redirect') ? redirect(Request::get('redirect')) : back();
     }
 
     /**
@@ -75,12 +81,11 @@ class ProfilerController extends Controller
         });
 
         /* if the fieldset has assets AND there are no assets in the fields, remove the validation
-           on the assumption that if there's no file in the request, they don't want to change it
+        on the assumption that if there's no file in the request, they don't want to change it
 
-           @todo how to handle file deletions???????
-        */
-        if ($this->fieldsetHasAssets($fieldset) &&
-            $fileFields->count() == 0) {
+        @todo how to handle file deletions???????
+         */
+        if ($this->fieldsetHasAssets($fieldset) && $fileFields->count() == 0) {
             $rules = collect((new ValidationBuilder($fields, $fieldset))->build()->rules())
                 // set the file ones to null
                 ->filterWithKey(function ($item, $key) use ($fields) {
@@ -93,11 +98,11 @@ class ProfilerController extends Controller
         // ensure there's a username
         $rules['fields.username'] = 'required';
 
-        // if there's a username and it's different than the current one, ensure its unique
+        // if there's a username and it's different than the current one, ensure it's unique
         if (Request::has('username') && Request::get('username') != $this->user->username()) {
             $rules['fields.username'] .= '|not_in:' . User::pluck('username')->implode(',');
         }
-        
+
         $fields['username'] = Request::get('username') ?? $this->user->username();
 
         // if we're resetting the password, add the validation rules and the fields
@@ -110,10 +115,56 @@ class ProfilerController extends Controller
         return app('validator')->make(['fields' => $fields], $rules);
     }
 
+    public function uploadFiles($fieldset)
+    {
+        return collect($fieldset->fields())
+            ->filter(function ($field) {
+                // Only deal with uploadable fields
+                return in_array(array_get($field, 'type'), ['assets']);
+            })->map(function ($config, $field) {
+                // Map into a nicer data schema to work with
+                return compact('field', 'config');
+            })->reject(function ($arr) {
+                // Remove if no file was uploaded
+                return !(request()->hasFile($arr['field']));
+            })->map(function ($arr, $field) {
+                // Add the uploaded files to our data array
+                $arr['files'] = collect(array_filter(Helper::ensureArray(request()->file($field))));
+
+                $config = array_get($arr, 'config');
+                $uploader = new AssetUploader($config, array_get($arr, 'files'));
+
+                $assets = $uploader->upload();
+
+                // AssetUploader always returns an array so if we only want one,
+                // use the first one
+                if (array_get($config, 'max_files', 0) == 1) {
+                    $assets = $assets[0];
+                }
+
+                return $assets;
+            })->all();
+    }
+
     private function fieldsetHasAssets($fieldset)
     {
         return collect($fieldset->fields())->contains(function ($key, $field) {
             return $field['type'] == 'assets';
         });
+    }
+
+    private function getFields($fieldset)
+    {
+        return array_intersect_key(
+            request()->all(),
+            array_flip(
+                array_keys(
+                    array_merge(
+                        $fieldset->fields(),
+                        Helper::ensureArray($fieldset->taxonomies())
+                    )
+                )
+            )
+        );
     }
 }

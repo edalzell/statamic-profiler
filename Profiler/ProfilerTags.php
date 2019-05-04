@@ -2,9 +2,8 @@
 
 namespace Statamic\Addons\Profiler;
 
-use Statamic\API\Request;
-use Statamic\API\URL;
 use Statamic\API\User;
+use Statamic\API\Request;
 use Statamic\Extend\Tags;
 
 class ProfilerTags extends Tags
@@ -16,31 +15,64 @@ class ProfilerTags extends Tags
      */
     public function editForm()
     {
-        $data = [];
-        if ($user = User::getCurrent()) {
-            $data = $user->data();
-            $data['username'] = $user->username();
-
-            if ($this->success()) {
-                $data['success'] = true;
-            }
-
-            if ($this->hasErrors()) {
-                $data['errors'] = $this->getErrorBag()->all();
-            }
-
-            $html = $this->formOpen('edit');
-
-            if ($redirect = $this->getRedirectUrl()) {
-                $html .= '<input type="hidden" name="redirect" value="' . $redirect . '" />';
-            }
-
-            return $html . $this->parse($data) . '</form>';
-        } else {
-            $data['errors'] = ['Must be logged in'];
+        if (!$user = $this->getUser()) {
+            $data['errors'] = ['User not found'];
 
             return $this->parse($data);
         }
+
+        $data = $user->data();
+        $data['username'] = $user->username();
+
+        if ($this->success()) {
+            $data['success'] = true;
+        }
+
+        if ($this->hasErrors()) {
+            $data['errors'] = $this->getErrorBag()->all();
+        }
+
+        $html = $this->formOpen("user/{$user->id()}");
+
+        if ($redirect = $this->getRedirectUrl()) {
+            $html .= '<input type="hidden" name="redirect" value="' . $redirect . '" />';
+        }
+
+        return $html . $this->parse($data) . '</form>';
+    }
+
+    /**
+     * The {{ profiler:delete_form }} tag
+     *
+     * @return string|array
+     */
+    public function deleteForm()
+    {
+        if (!$user = $this->getUser()) {
+            $data['errors'] = ['User not found'];
+
+            return $this->parse($data);
+        }
+
+        $data = $user->data();
+        $data['username'] = $user->username();
+
+        if ($this->success()) {
+            $data['success'] = true;
+        }
+
+        if ($this->hasErrors()) {
+            $data['errors'] = $this->getErrorBag()->all();
+        }
+
+        $html = $this->formOpen("user/{$user->id()}");
+        $html .= '<input type="hidden" name="_method" value="DELETE"/>';
+
+        if ($redirect = $this->getRedirectUrl()) {
+            $html .= '<input type="hidden" name="redirect" value="' . $redirect . '" />';
+        }
+
+        return $html . $this->parse($data) . '</form>';
     }
 
     /**
@@ -51,8 +83,8 @@ class ProfilerTags extends Tags
     private function getRedirectUrl()
     {
         return $this->getBool('allow_request_redirect', false)
-        ? Request::input('redirect')
-        : $this->get('redirect');
+            ? Request::input('redirect')
+            : $this->get('redirect');
     }
 
     /**
@@ -83,8 +115,8 @@ class ProfilerTags extends Tags
         }
 
         return ($this->content === '') // If this is a single tag...
-         ? !empty($errors) // just output a boolean.
-         : $this->parseLoop($errors); // Otherwise, parse the content loop.
+            ? !empty($errors) // just output a boolean.
+            : $this->parseLoop($errors); // Otherwise, parse the content loop.
     }
 
     /**
@@ -95,8 +127,8 @@ class ProfilerTags extends Tags
     private function hasErrors()
     {
         return (session()->has('errors'))
-        ? session('errors')->hasBag('profiler')
-        : false;
+            ? session('errors')->hasBag('profiler')
+            : false;
     }
 
     /**
@@ -108,6 +140,17 @@ class ProfilerTags extends Tags
     {
         if ($this->hasErrors()) {
             return session('errors')->getBag('profiler');
+        }
+    }
+
+    private function getUser()
+    {
+        if ($id = $this->getParam('id')) {
+            return User::find($id);
+        } elseif ($username = $this->getParam('username')) {
+            return User::whereUsername($username);
+        } else {
+            return User::getCurrent();
         }
     }
 }
