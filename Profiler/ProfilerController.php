@@ -73,17 +73,31 @@ class ProfilerController extends Controller
      *
      * @return mixed
      */
-    private function runValidation($fields = [])
+    private function runValidation($data = [])
     {
         $fieldset = FieldsetAPI::get('user');
+
         // get all the fields that are files
         // the validator needs a file name not an UploadedFile
         // this feels super duper hacky but I'm tired and it works
-        $fileFields = collect($fields)->filter(function ($value) {
+        $fileFields = collect($data)->filter(function ($value) {
             return ($value instanceof UploadedFile);
-        })->each(function ($file, $key) use (&$fields) {
-            $fields[$key] = $file->getClientOriginalName();
+        })->each(function ($file, $key) use (&$data) {
+            $data[$key] = $file->getClientOriginalName();
         });
+
+        $rules = [];
+        $attributes = [];
+
+        // make the rules
+        foreach ($fieldset->fields() as $field_name => $field_config) {
+            if ($field_rules = array_get($field_config, 'validate')) {
+                $rules[$field_name] = $field_rules;
+            }
+
+            // Define the attribute (friendly name) so it doesn't appear as field.fieldname
+            $attributes[$field_name] = array_get($field_config, 'display', $field_name);
+        }
 
         /*
             if the fieldset has assets AND there are no assets in the fields, remove the validation
@@ -91,36 +105,33 @@ class ProfilerController extends Controller
 
             @todo how to handle file deletions???????
          */
-        $rules = (new ValidationBuilder($fields, $fieldset))->build()->rules();
-
         if ($this->fieldsetHasAssets($fieldset) && $fileFields->count() == 0) {
             $rules = collect($rules)
                 // set the file ones to null
-                ->filterWithKey(function ($item, $key) use ($fields) {
-                    list($ignored, $actualKey) = explode('.', $key);
-                    return array_has($fields, $actualKey);
+                ->filterWithKey(function ($item, $key) use ($data) {
+                    return array_has($data, $key);
                 })
                 ->all();
         }
 
         // ensure there's a username
-        $rules['fields.username'] = 'required';
+        $rules['username'] = 'required';
 
         // if there's a username and it's different than the current one, ensure it's unique
         if (Request::has('username') && Request::get('username') != $this->user->username()) {
-            $rules['fields.username'] .= '|not_in:' . User::pluck('username')->implode(',');
+            $rules['username'] .= '|not_in:' . User::pluck('username')->implode(',');
         }
 
-        $fields['username'] = Request::get('username') ?? $this->user->username();
+        $data['username'] = Request::get('username') ?? $this->user->username();
 
         // if we're resetting the password, add the validation rules and the fields
         if (Request::has('password')) {
-            $rules['fields.password'] = 'required|confirmed';
+            $rules['password'] = 'required|confirmed';
 
-            $fields += Request::only(['password', 'password_confirmation']);
+            $data += Request::only(['password', 'password_confirmation']);
         }
 
-        return app('validator')->make(['fields' => $fields], $rules);
+        return app('validator')->make($data, $rules, [], $attributes);
     }
 
     public function uploadFiles($fieldset)
