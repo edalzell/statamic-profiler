@@ -119,7 +119,7 @@ class ProfilerController extends Controller
 
         // if there's a username and it's different than the current one, ensure it's unique
         if (Request::has('username') && Request::get('username') != $this->user->username()) {
-            $rules['username'] .= '|not_in:' . User::pluck('username')->implode(',');
+            $rules['username'] .= '|not_in:' . UserAPI::pluck('username')->implode(',');
         }
 
         $data['username'] = Request::get('username') ?? $this->user->username();
