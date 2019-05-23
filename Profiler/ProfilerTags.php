@@ -88,7 +88,7 @@ class ProfilerTags extends Tags
     }
 
     /**
-     * Maps to {{ user_profile:success }}
+     * Maps to {{ profiler:success }}
      *
      * @return bool
      */

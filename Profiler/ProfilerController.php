@@ -52,6 +52,8 @@ class ProfilerController extends Controller
                 )
             )->save();
 
+        $this->flash->put('success', true);
+
         return Request::has('redirect') ? redirect(Request::get('redirect')) : back();
     }
 
