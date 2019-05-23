@@ -2,7 +2,6 @@
 
 namespace Statamic\Addons\Profiler;
 
-use Statamic\API\Fieldset;
 use Statamic\Data\Users\User;
 use Statamic\Extend\Listener;
 
@@ -19,8 +18,10 @@ class ProfilerListener extends Listener
 
     public function upload(User $user)
     {
+        $uploader = new Uploader($user->fieldset());
+
         $user
-            ->data(array_merge($user->data(), $this->uploadFiles($user->fieldset())))
+            ->data(array_merge($user->data(), $uploader->upload()))
             ->save();
     }
 }
