@@ -83,6 +83,25 @@ With `login_type: email`:
 </div>
 ```
 
+#### Nested values
+
+Keep in mind that data in Statmic is either a string or an array. If you have nested values within your user data you have to pass those.
+
+For example your user data looks like this:
+```
+email: john@doe.com
+address:
+  first_name: 'John'
+  last_name: 'Doe'
+  street: 'Doe Street'
+  ....
+```
+Then you have to pass the value within your form in the same structure:
+
+```
+ <input type="text" name="address[first_name]" value="{{ old:address:first_name or address:first_name }}" class="form-control" />
+```
+
 ### Delete
 
 By default the current user is used, but you can pass in an `id` or `username` to delete that specific user.
