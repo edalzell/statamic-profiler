@@ -85,7 +85,7 @@ With `login_type: email`:
 
 #### Nested values
 
-Keep in mind that data in Statmic is either a string or an array. If you have nested values within your user data you have to pass those.
+Keep in mind that data in Statamic is either a string or an array. If you have nested values within your user data you have to pass those.
 
 For example your user data looks like this:
 ```
