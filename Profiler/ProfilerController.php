@@ -8,7 +8,6 @@ use Statamic\API\Fieldset;
 use Statamic\Data\Users\User;
 use Statamic\Extend\Controller;
 use Statamic\API\User as UserAPI;
-use Statamic\API\Fieldset as FieldsetAPI;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
 
 class ProfilerController extends Controller
@@ -70,19 +69,19 @@ class ProfilerController extends Controller
     }
 
     /**
-     * Get the Validator instance
+     * Get the Validator instance.
      *
      * @return mixed
      */
     private function runValidation($data = [])
     {
-        $fieldset = FieldsetAPI::get('user');
+        $fieldset = Fieldset::get('user');
 
         // get all the fields that are files
         // the validator needs a file name not an UploadedFile
         // this feels super duper hacky but I'm tired and it works
         $fileFields = collect($data)->filter(function ($value) {
-            return ($value instanceof UploadedFile);
+            return $value instanceof UploadedFile;
         })->each(function ($file, $key) use (&$data) {
             $data[$key] = $file->getClientOriginalName();
         });
@@ -115,12 +114,14 @@ class ProfilerController extends Controller
                 ->all();
         }
 
-        // ensure there's a username
-        $rules['username'] = 'required';
+        // if there are are no validation rules on `username` let's add `required` as a minimum
+        if (! isset($rules['username'])) {
+            $rules['username'] = 'required';
+        }
 
         // if there's a username and it's different than the current one, ensure it's unique
         if (Request::has('username') && Request::get('username') != $this->user->username()) {
-            $rules['username'] .= '|not_in:' . UserAPI::pluck('username')->implode(',');
+            $rules['username'] .= '|not_in:'.UserAPI::pluck('username')->implode(',');
         }
 
         $data['username'] = Request::get('username') ?? $this->user->username();
